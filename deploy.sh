@@ -10,6 +10,8 @@ gcloud functions deploy health-check \
   --entry-point=health_check \
   --trigger-http \
   --service-account=${SERVICE_ACCOUNT_EMAIL} \
-  --set-env-vars "PPDB_CONFIG_URI=${PPDB_CONFIG_URI}" \
+  --set-env-vars "PPDB_CONFIG_URI=${PPDB_CONFIG_URI},PPDB_USE_SECRET_MANAGER=true" \
   --gen2 \
-  --quiet
+  --quiet \
+  --no-user-output-enabled \
+  --memory=1Gi
