@@ -3,7 +3,7 @@
 set -euxo pipefail
 
 # Delete Cloud Function
-gcloud run services delete health-check \
+gcloud functions delete health-check \
   --region="${GCP_REGION}" \
   --project="${GCP_PROJECT}" \
-  --quiet
+  --quiet || true
