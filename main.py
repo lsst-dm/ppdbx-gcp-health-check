@@ -23,14 +23,14 @@ import logging
 import os
 from typing import Any
 
+import sqlalchemy
 from flask import Request
 
-from lsst.dax.ppdb.config import PpdbConfig
+from lsst.dax.ppdb.ppdb_config import PpdbConfig
 from lsst.dax.ppdb.ppdb import Ppdb
+from lsst.dax.ppdb.bigquery.ppdb_bigquery import PpdbBigQuery, PpdbBigQueryConfig
 
 from lsst.dax.ppdbx.gcp.log_config import setup_logging
-from lsst.dax.ppdbx.gcp.auth import get_auth_default
-# from lsst.dax.ppdbx.gcp.storage import StorageClient
 
 setup_logging()
 
@@ -38,26 +38,29 @@ setup_logging()
 def health_check(request: Request) -> dict[str, Any]:
     """Cloud Function to perform a health check on the PPDB replication
     system."""
-    logging.info("Starting PPDB replication health check.")
-
-    credentials, project_id = get_auth_default()
-    logging.info(
-        "Authenticated with project ID '%s' and credentials type %s",
-        project_id,
-        type(credentials),
-    )
+    logging.info("Starting PPDB health check.")
 
     ppdb_config_uri = os.environ.get("PPDB_CONFIG_URI")
     if ppdb_config_uri:
         logging.info("PPDB_CONFIG_URI: %s", ppdb_config_uri)
     else:
-        # Fatal error if PPDB_CONFIG_URI is not set
         raise RuntimeError("PPDB_CONFIG_URI environment variable is not set.")
 
     ppdb_config = PpdbConfig.from_uri(ppdb_config_uri)
     logging.info("Loaded PPDB configuration: %s", ppdb_config)
 
+    assert isinstance(ppdb_config, PpdbBigQueryConfig), (
+        "ppdb_config is not of type PpdbBigQueryConfig"
+    )
+
     ppdb = Ppdb.from_config(ppdb_config)
     logging.info("Created PPDB instance of type %s", type(ppdb))
+    assert isinstance(ppdb, PpdbBigQuery), "PPDB instance is not of type PpdbBigQuery"
+
+    with ppdb._engine.begin() as connection:
+        connection.execute(sqlalchemy.text("SELECT 1"))
+        logging.info("Successfully executed test query on PPDB Postgres database.")
+
+    logging.info("PPDB health check completed successfully.")
 
     return {"status": "healthy", "message": "Health check completed successfully"}
